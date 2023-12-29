@@ -3,12 +3,16 @@ package controller
 import (
 	"encoding/json" // package untuk enkode dan mendekode json menjadi struct dan sebaliknya
 	"fmt"
+	"io"
+	"os"
 	"strconv" // package yang digunakan untuk mengubah string menjadi tipe int
 
 	"log"
 	"net/http" // digunakan untuk mengakses objek permintaan dan respons dari api
 
 	"crud/models" //models package dimana Buku didefinisikan
+	"path/filepath" 
+	"mime"
 
 	"github.com/gorilla/mux" // digunakan untuk mendapatkan parameter dari router
 	_ "github.com/lib/pq"    // postgres golang driver
@@ -25,62 +29,39 @@ type Response struct {
 	Data    []models.Buku `json:"data"`
 }
 
-// func TmbhBuku(w http.ResponseWriter, r *http.Request) {
-// 	var buku models.Buku
-
-// 	// Parse data formulir multipart
-// 	err := r.ParseMultipartForm(10 << 20) // Batasan 10 MB untuk ukuran file gambar
-// 	if err != nil {
-// 		log.Fatalf("Tidak dapat mem-parsing formulir: %v", err)
-// 	}
-
-// 	// Dapatkan file formulir, abaikan error jika tidak ada file
-// 	file, handler, err := r.FormFile("Image")
-// 	if err == nil {
-// 		defer file.Close()
-
-// 		// Buat file baru di folder "uploads"
-// 		f, err := os.OpenFile("uploads/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-// 		if err != nil {
-// 			log.Fatalf("Tidak dapat membuka file: %v", err)
-// 		}
-// 		defer f.Close()
-
-// 		// Salin file ke lokasi baru
-// 		_, err = io.Copy(f, file)
-// 		if err != nil {
-// 			log.Fatalf("Tidak dapat menyalin file: %v", err)
-// 		}
-
-// 		buku.Image = handler.Filename
-// 	}
-
-// 	// Isi field lainnya
-// 	buku.Judul_buku = r.FormValue("Judul_buku")
-// 	buku.Penulis = r.FormValue("Penulis")
-
-// 	// Panggil fungsi models untuk memasukkan data buku
-// 	insertID := models.TambahBuku(buku)
-
-// 	// Format objek respons
-// 	res := response{
-// 		ID:      insertID,
-// 		Message: "Data buku telah ditambahkan",
-// 	}
-
-// 	// Kirim respons
-// 	json.NewEncoder(w).Encode(res)
-// }
-
 func TmbhBuku(w http.ResponseWriter, r *http.Request) {
 	var buku models.Buku
 
-	// Baca data JSON dari body permintaan
-	err := json.NewDecoder(r.Body).Decode(&buku)
+	// Parse data formulir multipart
+	err := r.ParseMultipartForm(10 << 20) // Batasan 10 MB untuk ukuran file gambar
 	if err != nil {
-		http.Error(w, "Gagal memparsing JSON", http.StatusBadRequest)
-		return
+		log.Fatalf("Tidak dapat mem-parsing formulir: %v", err)
 	}
+
+	// Dapatkan file formulir, abaikan error jika tidak ada file
+	file, handler, err := r.FormFile("Image")
+	if err == nil {
+		defer file.Close()
+
+		// Buat file baru di folder "uploads"
+		f, err := os.OpenFile("uploads/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			log.Fatalf("Tidak dapat membuka file: %v", err)
+		}
+		defer f.Close()
+
+		// Salin file ke lokasi baru
+		_, err = io.Copy(f, file)
+		if err != nil {
+			log.Fatalf("Tidak dapat menyalin file: %v", err)
+		}
+
+		buku.Image = handler.Filename
+	}
+
+	// Isi field lainnya
+	buku.Judul_buku = r.FormValue("Judul_buku")
+	buku.Penulis = r.FormValue("Penulis")
 
 	// Panggil fungsi models untuk memasukkan data buku
 	insertID := models.TambahBuku(buku)
@@ -92,9 +73,32 @@ func TmbhBuku(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Kirim respons
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
 }
+
+// func TmbhBuku(w http.ResponseWriter, r *http.Request) {
+// 	var buku models.Buku
+
+// 	// Baca data JSON dari body permintaan
+// 	err := json.NewDecoder(r.Body).Decode(&buku)
+// 	if err != nil {
+// 		http.Error(w, "Gagal memparsing JSON", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// Panggil fungsi models untuk memasukkan data buku
+// 	insertID := models.TambahBuku(buku)
+
+// 	// Format objek respons
+// 	res := response{
+// 		ID:      insertID,
+// 		Message: "Data buku telah ditambahkan",
+// 	}
+
+// 	// Kirim respons
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(res)
+// }
 
 // AmbilBuku mengambil single data dengan parameter id
 func AmbilBuku(w http.ResponseWriter, r *http.Request) {
@@ -157,45 +161,46 @@ func UpdateBuku(w http.ResponseWriter, r *http.Request) {
 	// buat variable buku dengan type models.Buku
 	var buku models.Buku
 
-	// decode json request ke variable buku
-	err = json.NewDecoder(r.Body).Decode(&buku)
+	// // decode json request ke variable buku
+	// err = json.NewDecoder(r.Body).Decode(&buku)
 
+	// if err != nil {
+	// 	log.Fatalf("Tidak bisa decode request body.  %v", err)
+	// }
+	
+
+	// Parse data formulir multipart
+	err = r.ParseMultipartForm(10 << 20)
 	if err != nil {
-		log.Fatalf("Tidak bisa decode request body.  %v", err)
+		log.Fatalf("Tidak dapat mem-parsing formulir: %v", err)
 	}
 
-	// // Parse data formulir multipart
-	// err = r.ParseMultipartForm(10 << 20)
-	// if err != nil {
-	// 	log.Fatalf("Tidak dapat mem-parsing formulir: %v", err)
-	// }
+	file, handler, err := r.FormFile("Image")
+	if err != nil {
+		log.Fatalf("Error mengambil file: %v", err)
+	}
+	defer file.Close()
 
-	// file, handler, err := r.FormFile("Image")
-	// if err != nil {
-	// 	log.Fatalf("Error mengambil file: %v", err)
-	// }
-	// defer file.Close()
+	if handler != nil {
+		// Buat file baru di folder "uploads"
+		f, err := os.OpenFile("uploads/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			log.Fatalf("Tidak dapat membuka file: %v", err)
+		}
+		defer f.Close()
 
-	// if handler != nil {
-	// 	// Buat file baru di folder "uploads"
-	// 	f, err := os.OpenFile("uploads/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
-	// 	if err != nil {
-	// 		log.Fatalf("Tidak dapat membuka file: %v", err)
-	// 	}
-	// 	defer f.Close()
+		// Salin file ke lokasi baru
+		_, err = io.Copy(f, file)
+		if err != nil {
+			log.Fatalf("Tidak dapat menyalin file: %v", err)
+		}
 
-	// 	// Salin file ke lokasi baru
-	// 	_, err = io.Copy(f, file)
-	// 	if err != nil {
-	// 		log.Fatalf("Tidak dapat menyalin file: %v", err)
-	// 	}
+		buku.Image = handler.Filename
+	}
 
-	// 	buku.Image = handler.Filename
-	// }
-
-	// // Isi field lainnya
-	// buku.Judul_buku = r.FormValue("Judul_buku")
-	// buku.Penulis = r.FormValue("Penulis")
+	// Isi field lainnya
+	buku.Judul_buku = r.FormValue("Judul_buku")
+	buku.Penulis = r.FormValue("Penulis")
 
 	// panggil updatebuku untuk mengupdate data
 	updatedRows := models.UpdateBuku(int64(id), buku)
@@ -239,4 +244,34 @@ func HapusBuku(w http.ResponseWriter, r *http.Request) {
 
 	// send the response
 	json.NewEncoder(w).Encode(res)
+}
+
+
+func ServeImage(w http.ResponseWriter, r *http.Request) {
+    // Get the image filename from the URL parameter
+    params := mux.Vars(r)
+    imageName := params["filename"]
+
+    // Open the image file
+    imagePath := filepath.Join("uploads", imageName)
+    file, err := os.Open(imagePath)
+    if err != nil {
+        http.Error(w, "Image not found", http.StatusNotFound)
+        return
+    }
+    defer file.Close()
+
+    // Set the Content-Type header based on the file extension
+    contentType := mime.TypeByExtension(filepath.Ext(imagePath))
+    if contentType == "" {
+        contentType = "application/octet-stream"
+    }
+    w.Header().Set("Content-Type", contentType)
+
+    // Copy the file content to the response writer
+    _, err = io.Copy(w, file)
+    if err != nil {
+        http.Error(w, "Failed to serve image", http.StatusInternalServerError)
+        return
+    }
 }

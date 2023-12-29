@@ -127,33 +127,94 @@ func AmbilSatuBuku(id int64) (Buku, error) {
 	return buku, err
 }
 
-// update user in the DB
-func UpdateBuku(id int64, buku Buku) int64 {
+// // update user in the DB
+// func UpdateBuku(id int64, buku Buku) int64 {
 
-	// mengkoneksikan ke db postgres
+// 	// mengkoneksikan ke db postgres
+// 	db := config.CreateConnection()
+
+// 	// kita tutup koneksinya di akhir proses
+// 	defer db.Close()
+
+// 	waktuSekarang := time.Now()
+
+// 	buku.Tgl_publikasi = waktuSekarang
+
+// 	// kita buat sql query create
+// 	sqlStatement := `UPDATE buku SET judul_buku=$2, penulis=$3, tgl_publikasi=$4, image=$5 WHERE id=$1`
+
+// 	// eksekusi sql statement
+// 	res, err := db.Exec(sqlStatement, id, buku.Judul_buku, buku.Penulis, buku.Tgl_publikasi, buku.Image)
+
+// 	if err != nil {
+// 		log.Fatalf("Tidak bisa mengeksekusi query. %v", err)
+// 	}
+
+// 	// cek berapa banyak row/data yang diupdate
+// 	rowsAffected, err := res.RowsAffected()
+
+// 	//kita cek
+// 	if err != nil {
+// 		log.Fatalf("Error ketika mengecheck rows/data yang diupdate. %v", err)
+// 	}
+
+// 	fmt.Printf("Total rows/record yang diupdate %v\n", rowsAffected)
+
+// 	return rowsAffected
+// }
+
+// GetImageName retrieves the image name based on the book ID
+func GetImageName(id int64) (string, error) {
 	db := config.CreateConnection()
-
-	// kita tutup koneksinya di akhir proses
 	defer db.Close()
 
-	waktuSekarang := time.Now()
+	var imageName string
+	err := db.QueryRow("SELECT image FROM buku WHERE id = $1", id).Scan(&imageName)
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	return imageName, nil
+}
 
+// UpdateBuku updates a book in the database, deleting the old image if it exists
+func UpdateBuku(id int64, buku Buku) int64 {
+	db := config.CreateConnection()
+	defer db.Close()
+
+	// Retrieve old image name from the database
+	oldImageName, err := GetImageName(id)
+	if err != nil {
+		log.Fatalf("Tidak dapat mendapatkan nama file gambar lama. %v", err)
+	}
+
+	waktuSekarang := time.Now()
 	buku.Tgl_publikasi = waktuSekarang
 
-	// kita buat sql query create
-	sqlStatement := `UPDATE buku SET judul_buku=$2, penulis=$3, tgl_publikasi=$4, image=$5 WHERE id=$1`
+	// Delete old image from the file system if it exists
+	if oldImageName != "" {
+		oldImagePath := filepath.Join("uploads", oldImageName)
+		err := os.Remove(oldImagePath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				log.Printf("Tidak bisa menghapus gambar lama. %v", err)
+			} else {
+				fmt.Printf("Gambar lama %s tidak ditemukan", oldImageName)
+			}
+		} else {
+			fmt.Printf("Gambar lama %s berhasil dihapus", oldImageName)
+		}
+	}
 
-	// eksekusi sql statement
+	// Update the database with the new image
+	sqlStatement := `UPDATE buku SET judul_buku=$2, penulis=$3, tgl_publikasi=$4, image=$5 WHERE id=$1`
 	res, err := db.Exec(sqlStatement, id, buku.Judul_buku, buku.Penulis, buku.Tgl_publikasi, buku.Image)
 
 	if err != nil {
 		log.Fatalf("Tidak bisa mengeksekusi query. %v", err)
 	}
 
-	// cek berapa banyak row/data yang diupdate
+	// Check how many rows/data were updated
 	rowsAffected, err := res.RowsAffected()
-
-	//kita cek
 	if err != nil {
 		log.Fatalf("Error ketika mengecheck rows/data yang diupdate. %v", err)
 	}

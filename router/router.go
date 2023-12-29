@@ -15,6 +15,7 @@ func Router() *mux.Router {
 	router.HandleFunc("/api/buku", controller.TmbhBuku).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/buku/{id}", controller.UpdateBuku).Methods("PUT", "OPTIONS")
 	router.HandleFunc("/api/buku/{id}", controller.HapusBuku).Methods("DELETE", "OPTIONS")
+	router.HandleFunc("/api/buku/images/{filename}", controller.ServeImage).Methods("GET")
 
 	return router
 }
